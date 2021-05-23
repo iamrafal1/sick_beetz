@@ -1,0 +1,196 @@
+-----------------
+INITIAL THOUGHTS
+
+data structures that we need:
+
+Something for playlists
+
+Something for all items in general
+
+load songs every time: data structure for 50k vertices took 1second. However, music files are bigger
+guess i could try first that it has a data structure for all and then it just goes fuck it and loads it all in,
+and if that is too slow i use other way
+
+general data structure needs to be queried fast and efficiently, needs to be traversable easily and it must be fast
+to find an individual item
+-------------------
+FINAL IDEA
+
+-make a few different versions of it
+V1 - takes in all audio files in the current directory, puts them in some adt, and plays according to that adt
+V2 - extension to V1 - Potentially makes playlists by storing data using pickle
+V3 - Reads cd and stores references to the objects??? For playlists creates a separate folder for each playlist?
+***NEWER***
+V4 - Make code simpler - take input list and use rand shuffle - no need to track previous or next - less space 
+like this could show which one will be next and which one not and provide a full list of what will
+be played. Also easier to track next and previous -> less space used. Easier to debug - pure advantages.
+Can still just reshuffle and reset counter once 70% is reached 
+V5 - take audio files and check the frequency and amplitude to assume whether song is happy or sad
+
+(in reality v4 is v2)
+
+-------------------
+V1
+
+Main structure - binary heap - fast addition of tracks, keeps indexed base which is good for randomisation. However,
+doesn't keep track of next or previous songs, so will need to implement that. Since it is an array, there might be an
+inefficiency with adding since python list adding can be unlucky, so maybe doubly linked list would be better since
+items are stored randomly in memory. Since this is only V1 let's stick with binary heap because it is easy and final
+version will be much different anyway.
+
+Main issue with V1 - RAM overloaded. If a directory has 16GB of songs (unlikely but possible), 16GB of ram is
+occupied. This is just a trial run for making music players
+
+------------------
+V1 Conclusions
+
+Main structure was a simple list, it was efficient enough, however, things turned out not as expected.
+-The system for keeping track worked surprisingly well and exactly as intended. However, my fear is that if I implement
+ previous track, the stack and queue will get confused with indexes, but that should be a small thing
+
+-Another surprise was that the music files couldn't be loaded into python - just the references (this was a pleasant
+one). This means that a lot of v3 was already implemented in v1
+
+-What went wrong was different than expected. The issue is that playsound is a very simple library with no possibilites
+ (e.g. interrupting music for moving to next song). This is the core issue with v1, but it shouldn't be too hard to fix
+
+-Also, binary heap didn't make sense since there is no particular order, and in folders files are stored a-z by default
+ so I stuck with a simple list - in general lists aren't going to be so so so long for songs (usually <1,000, even in
+ extreme cases <5,000 but still possible)
+
+Overall much simpler and shorter to make than expected, needs a few adjustments (like pause or run and print list of
+songs and their indexes etc) but other than that this is coming out pretty well, also potentially a future tkinter
+implementation, and if that goes well then much later a mobile version for android
+
+UPDATE
+Changed the version by a decent amount - Essentially it is pretty solid CLI implementation of a music player as of now.
+Using pygame.mixer.music turned out to be the best option (because of built in stuff, and API (im not a sound
+engineer to code manipulation of where pause occurred etc)) Additionally the quality is really good so it is the best
+option (and made my code easier). Maybe i will just implement the playlists somehow and then leave v1 as it is, then
+go ahead and implement v2 for tkinter and much later in the future potentially a v3 for mobile with kotlin.
+
+------------------------------------------------------
+V2 Conclusions
+
+V2 is much much simpler, makes more sense, uses less ADTs and much less code. Difference is that V2 has a list and
+shuffles it (shuffle is O(n)) and because of this doesn't require so many ADTs or complex tracking for which songs were
+played or not. Added searching for subdirectories and added paths. Added support for mp3 and wav (for now, we'll see
+if i add more in future like flac, either way wma is impossible without third party software). There is not much room
+for improvement other than making it play flac/ogg etc. and making a GUI version of it. For now the cli version is
+fully functional and usable
+
+Probably the most time consuming and hardest part was realising that .wma is pretty much unplayable in python (because
+of windows protections) and figuring out that glob is slightly different than regex, and thus finding a way to read
+files from other directories. Otherwise, v2 wasn't so bad, implementation was overall easier and  making the playlist
+and learning to use shelve was actually really quick and easy
+
+#added search method
+-------------------------------------------------------
+Playlists
+
+Initial ideas:
+
+Implement as a list of song names - however if song name changes or song gets moved or deleted, list becomes corrupted
+so - need error catching, upon delete making sure that song is also deleted from each playlist (to ensure this we need
+to check whether any list is corrupt upon each launch of app, or upon each launch of playlists)
+
+Actual implementation - python shelve module - create shelve called playlists, key - playlist name, value - song list
+
+---------------------------------------------------------
+GUI version   - Now playing tab
+
+-Implementing all of the above as a GUI. Biggest obstacle thus far is managing the classes such that each tab is a
+different class yet they call the exact same instance of the music adt
+
+-looks like it's going to be as follows: each tab has its class, however the coding for each class is going to be done
+in the main window class to make sure the same instance of music adt is being manipulated. However this is going to make
+for a super messy main window class.
+
+-Instead it might make more sense to create the music adt outside all classes as a global object and thus manipulate it
+from each individual class - code would be grouped up per tab and so much easier to understand, maintain and possibly
+easier to implement.
+
+-last option seems to be the solution. but new problem. how do i have music playing and also some other stuff happening?
+multiple threads or just a loop that checks if a button was pressed etc
+
+**updates**
+- player is still in music adt, music adt is global so that each tab can access it. The now playing tab is almost
+finished. Only need to add function that sets position of song if progress bar is clicked, spinning beets image,
+automatically playing next song
+
+-Big issue, get_pos() is super inconsistent with the time that it gives - solved, restart song completely to reset timer
+
+-Big issue no.2 program consumes a lot of cpu power, possibly because thread is used instead of multiprocessing, will
+try multiprocessing to see, otherwise will just leave it. After some research it seems like multiprocessing is the way
+to go as it can pool resources among more cores, thus improving efficiency of the program. As of now the efficiency is
+fine, but my pc is rather powerful, so on a slower device it could bug. Will need to watch tutorial on multiprocessing.
+
+-After hours of researching multiprocessing (which isn't exactly viable here) it turned out that making the thread sleep
+for 0.1 seconds after each iteration of the loop solved the issue - cpu usage dropped 100x, making the app viable to use
+in the background. only thing left to do in now_playing is to add spinning image and to possibly change songs by
+pressing songs in prev/next list. After that the biggest and hardest part is done - the playlists and song list and
+settings should hopefully be much easier to implement.
+
+--UPDATE--
+-Made spinning thing initially on canvas, but that was too inefficient and it flickered occasionally, so instead i opted
+for a gif of the image, loading each frame of gif into ram (not very large). Added clicking on prev or next list to
+play certain songs. Fixed some bugs with threads not terminating after closing app, and the prev/next lists jumping
+out of index. As of now, play_now is working flawlessly with all features included, only changes to be made are
+cosmetic changes. Quite pleased with end result, but it took for ages and was much more difficult than anticipated.
+
+
+
+------------------------------------
+Songs tab
+
+initial thought- Think i will create a table of sorts with each row. Initially the songs list will just be a view that
+doesnt modify the order of the list except if strictly specified to do so (execute button). table will have rows
+and columns with attributes - similar to an sql style relational database with simply just putting things in order and
+matching strings (search bar). Implementing a right click drop down menu to add to play list or to play current song etc
+will probably be the biggest challenge. However i think i will leave adding to playlists till after the actual playlist
+tab is made out.
+
+**update**
+-Implemented entire table as 3 separate listboxes and made sure that each row is always the same. Added drop down menu
+(now fully functional). Still need to add a button to refresh (in case new paths are added), making every song right-
+clickable to get a drop down menu with options like adding to playlist, adding to queue (potentially in future) etc.
+Need to highlight row of songs that are currently playing (probably link it with music adt cursor), need to add a
+shuffle option, need to implement search tool, and most importantly need to play song on left click.
+
+**update**
+implemented everything(except option for adding to playlist, will take care of it later when playlist tab is made)
+This tab is cosmetically and functionally finished. Now just need to make tabs for settings and playlists, which will
+hopefully be easier to do, although this tab was definitely much easier to make than now_playing. The playlist tab will
+essentially be a copy paste of this with some other features.
+
+--------------------------------------
+Playlist tab
+
+initial thought- Will make the actual list of playlists the same as songs tab - listbox per each attribute. Upon
+pressing on a playlist, the playlist will appear in all songs. The playlist tab will also communicate with a shelve
+where playlists are actually stored. Biggest challenge here will probably be to implement a good system of adding songs
+to the playlist, that is quick and easy. Maybe open new window with a list of all songs and then just left click on songs
+that will be added to the playlist could be a nice way of doing it.
+
+**update**
+Playlist is now finished. Creating a new window as well as remembering old code was the biggest challenge. From what I
+gather, unless the code is really pristine, the longer the project gets the harder it is to remember individual parts of
+it. Another note is that for the last 2 tabs I barely kept track of what I was doing, which probably also made it harder
+to remember and to keep a good structure. As for the tab itself, overall I'm quite happy - it came out just as I wanted
+it to. Only thing I might change in the future is to change the entire thing from relative pathways to absolute pathways
+but we'll see how that goes. Also having to change my previous playlist structure entirely was a bit inconvenient.
+
+
+---------------------------------------
+Settings tab
+
+initial thoughts - Will probably need a listbox of some kind for the different paths that the music player scans. Other
+than the paths, I would like to be able to control the playback factor (how often songs repeat). As for now I don't
+have any other thoughts as to what else could go into settings, but maybe I'll come up with something and look at other
+music players
+
+
+Things left to add:
+Repeat button
+mix and match playlists
+make icon
